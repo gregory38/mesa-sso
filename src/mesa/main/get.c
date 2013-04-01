@@ -369,6 +369,7 @@ EXTRA_EXT(ARB_map_buffer_alignment);
 EXTRA_EXT(ARB_texture_cube_map_array);
 EXTRA_EXT(ARB_texture_buffer_range);
 EXTRA_EXT(ARB_texture_multisample);
+EXTRA_EXT(ARB_separate_shader_objects);
 
 static const int
 extra_ARB_color_buffer_float_or_glcore[] = {
@@ -887,6 +888,14 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
       }
       else {
          _mesa_problem(ctx, "driver doesn't implement GetTimestamp");
+      }
+      break;
+   /* GL_ARB_separate_shader_objects */
+   case GL_PROGRAM_PIPELINE_BINDING:
+      if (ctx->Pipeline.Current) {
+         v->value_int = ctx->Pipeline.Current->Name;
+      } else {
+         v->value_int = 0;
       }
       break;
    }

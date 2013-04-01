@@ -709,6 +709,9 @@ descriptor=[
 
 # GL_ARB_texture_cube_map_array
   [ "TEXTURE_BINDING_CUBE_MAP_ARRAY_ARB", "LOC_CUSTOM, TYPE_INT, TEXTURE_CUBE_ARRAY_INDEX, extra_ARB_texture_cube_map_array" ],
+
+# GL_ARB_separate_shader_objects
+  [ "PROGRAM_PIPELINE_BINDING", "LOC_CUSTOM, TYPE_INT, GL_PROGRAM_PIPELINE_BINDING, extra_ARB_separate_shader_objects" ],
 ]},
 
 # Enums restricted to OpenGL Core profile
