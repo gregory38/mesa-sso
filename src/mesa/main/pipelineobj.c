@@ -379,6 +379,62 @@ _mesa_ActiveShaderProgram(GLuint pipeline, GLuint program)
 void GLAPIENTRY
 _mesa_BindProgramPipeline(GLuint pipeline)
 {
+   GET_CURRENT_CONTEXT(ctx);
+   struct gl_pipeline_object *newObj = NULL;
+
+   if (ctx->_Shader->Name == pipeline)
+      return;   /* rebinding the same pipeline object- no change */
+
+   /*
+    *  An INVALID_OPERATION error is generated :
+    *  by BindProgramPipeline if the current transform feedback object is active
+    *  and not paused;
+    */
+   if (_mesa_is_xfb_active_and_unpaused(ctx)) {
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+            "glBindProgramPipeline(transform feedback active)");
+      return;
+   }
+
+   /*
+    * Get pointer to new pipeline object (newObj)
+    */
+   if (pipeline) {
+      /* non-default pipeline object */
+      newObj = lookup_pipeline_object(ctx, pipeline);
+      if (!newObj) {
+         _mesa_error(ctx, GL_INVALID_OPERATION, "glBindProgramPipeline(non-gen name)");
+         return;
+      }
+
+      /* Object is created by any Pipeline call but glGenProgramPipelines,
+       * glIsProgramPipeline and GetProgramPipelineInfoLog
+       */
+      newObj->EverBound = GL_TRUE;
+   }
+
+   /* First bind the Pipeline to pipeline binding point */
+   _mesa_reference_pipeline_object(ctx, &ctx->Pipeline.Current, newObj);
+
+   /* Spec say:
+    * if any program is bound to the context, the current pipeline object is
+    * ignored.
+    */
+   if (&ctx->Shader != ctx->_Shader) {
+      if (pipeline) {
+         /* Bound the pipeline to the current program and
+          * restore the pipeline state
+          */
+         _mesa_reference_pipeline_object(ctx, &ctx->_Shader, newObj);
+      } else {
+         /* Unbind the pipeline */
+         _mesa_reference_pipeline_object(ctx, &ctx->_Shader, ctx->Pipeline.Default);
+      }
+      FLUSH_VERTICES(ctx, _NEW_PROGRAM | _NEW_PROGRAM_CONSTANTS);
+      /* FIXME */
+      if (ctx->Driver.UseProgram)
+         ctx->Driver.UseProgram(ctx, NULL);
+   }
 }
 
 /**
