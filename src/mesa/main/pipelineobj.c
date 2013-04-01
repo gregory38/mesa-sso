@@ -230,6 +230,30 @@ _mesa_UseProgramStages(GLuint pipeline, GLbitfield stages, GLuint program)
 void GLAPIENTRY
 _mesa_ActiveShaderProgram(GLuint pipeline, GLuint program)
 {
+   GET_CURRENT_CONTEXT(ctx);
+   struct gl_shader_program *shProg = (program != 0)
+      ? _mesa_lookup_shader_program_err(ctx, program, "glActiveShaderProgram(program)")
+      : NULL;
+
+   struct gl_pipeline_object *pipe = lookup_pipeline_object(ctx, pipeline);
+
+   if (!pipe) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "glActiveShaderProgram(pipeline)");
+      return;
+   }
+
+   /* Object is created by any Pipeline call but glGenProgramPipelines,
+    * glIsProgramPipeline and GetProgramPipelineInfoLog
+    */
+   pipe->EverBound = GL_TRUE;
+
+   if ((shProg != NULL) && !shProg->LinkStatus) {
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+            "glActiveShaderProgram(program %u not linked)", shProg->Name);
+      return;
+   }
+
+   _mesa_reference_shader_program(ctx, &pipe->ActiveProgram, shProg);
 }
 
 /**
@@ -347,6 +371,59 @@ _mesa_IsProgramPipeline(GLuint pipeline)
 void GLAPIENTRY
 _mesa_GetProgramPipelineiv(GLuint pipeline, GLenum pname, GLint *params)
 {
+   GET_CURRENT_CONTEXT(ctx);
+   struct gl_pipeline_object *pipe = lookup_pipeline_object(ctx, pipeline);
+
+   /* Are geometry shaders available in this context?
+    */
+   const bool has_gs = _mesa_is_desktop_gl(ctx) && ctx->Extensions.ARB_geometry_shader4;
+
+   if (!pipe) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "glGetProgramPipelineiv(pipeline)");
+      return;
+   }
+
+   /* Object is created by any Pipeline call but glGenProgramPipelines,
+    * glIsProgramPipeline and GetProgramPipelineInfoLog
+    */
+   pipe->EverBound = GL_TRUE;
+
+   switch (pname) {
+   case GL_ACTIVE_PROGRAM:
+      *params = pipe->ActiveProgram ? pipe->ActiveProgram->Name : 0;
+      return;
+   case GL_INFO_LOG_LENGTH:
+      // TODO
+      *params = 0;
+      return;
+   case GL_VALIDATE_STATUS:
+      *params = pipe->ValidationStatus;
+      return;
+   case GL_VERTEX_SHADER:
+      *params = pipe->CurrentVertexProgram ? pipe->CurrentVertexProgram->Name : 0;
+      return;
+   case GL_TESS_EVALUATION_SHADER:
+      /* NOT YET SUPPORTED */
+      break;
+   case GL_TESS_CONTROL_SHADER:
+      /* NOT YET SUPPORTED */
+      break;
+   case GL_GEOMETRY_SHADER:
+      if (!has_gs) break;
+      *params = pipe->CurrentGeometryProgram ? pipe->CurrentGeometryProgram->Name : 0;;
+      return;
+   case GL_FRAGMENT_SHADER:
+      *params = pipe->CurrentFragmentProgram ? pipe->CurrentFragmentProgram->Name : 0;;
+      return;
+   case GL_COMPUTE_SHADER:
+      /* NOT YET SUPPORTED */
+      break;
+   default:
+      break;
+   }
+
+   _mesa_error(ctx, GL_INVALID_ENUM, "glGetProgramPipelineiv(pname=%s)",
+         _mesa_lookup_enum_by_nr(pname));
 }
 
 /**
