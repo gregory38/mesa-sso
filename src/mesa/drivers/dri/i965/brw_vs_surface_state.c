@@ -111,7 +111,7 @@ brw_upload_vs_ubo_surfaces(struct brw_context *brw)
 {
    struct gl_context *ctx = &brw->intel.ctx;
    /* _NEW_PROGRAM */
-   struct gl_shader_program *prog = ctx->Shader.CurrentVertexProgram;
+   struct gl_shader_program *prog = ctx->_Shader->CurrentVertexProgram;
 
    if (!prog)
       return;

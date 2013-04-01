@@ -452,8 +452,8 @@ static GLuint
 get_handle(struct gl_context *ctx, GLenum pname)
 {
    if (pname == GL_PROGRAM_OBJECT_ARB) {
-      if (ctx->Shader.ActiveProgram)
-         return ctx->Shader.ActiveProgram->Name;
+      if (ctx->_Shader->ActiveProgram)
+         return ctx->_Shader->ActiveProgram->Name;
       else
          return 0;
    }
@@ -765,7 +765,7 @@ compile_shader(struct gl_context *ctx, GLuint shaderObj)
    _mesa_glsl_compile_shader(ctx, sh);
 
    if (sh->CompileStatus == GL_FALSE && 
-       (ctx->Shader.Flags & GLSL_REPORT_ERRORS)) {
+       (ctx->_Shader->Flags & GLSL_REPORT_ERRORS)) {
       _mesa_debug(ctx, "Error compiling shader %u:\n%s\n",
                   sh->Name, sh->InfoLog);
    }
@@ -787,9 +787,9 @@ link_program(struct gl_context *ctx, GLuint program)
       return;
 
    if (obj->Active
-       && (shProg == ctx->Shader.CurrentVertexProgram
-	   || shProg == ctx->Shader.CurrentGeometryProgram
-	   || shProg == ctx->Shader.CurrentFragmentProgram)) {
+       && (shProg == ctx->_Shader->CurrentVertexProgram
+	   || shProg == ctx->_Shader->CurrentGeometryProgram
+	   || shProg == ctx->_Shader->CurrentFragmentProgram)) {
       _mesa_error(ctx, GL_INVALID_OPERATION,
                   "glLinkProgram(transform feedback active)");
       return;
@@ -800,7 +800,7 @@ link_program(struct gl_context *ctx, GLuint program)
    _mesa_glsl_link_shader(ctx, shProg);
 
    if (shProg->LinkStatus == GL_FALSE && 
-       (ctx->Shader.Flags & GLSL_REPORT_ERRORS)) {
+       (ctx->_Shader->Flags & GLSL_REPORT_ERRORS)) {
       _mesa_debug(ctx, "Error linking program %u:\n%s\n",
                   shProg->Name, shProg->InfoLog);
    }
@@ -890,21 +890,21 @@ use_shader_program(struct gl_context *ctx, GLenum type,
 
    switch (type) {
    case GL_VERTEX_SHADER:
-      target = &ctx->Shader.CurrentVertexProgram;
+      target = &ctx->_Shader->CurrentVertexProgram;
       if ((shProg == NULL)
 	  || (shProg->_LinkedShaders[MESA_SHADER_VERTEX] == NULL)) {
 	 shProg = NULL;
       }
       break;
    case GL_GEOMETRY_SHADER_ARB:
-      target = &ctx->Shader.CurrentGeometryProgram;
+      target = &ctx->_Shader->CurrentGeometryProgram;
       if ((shProg == NULL)
 	  || (shProg->_LinkedShaders[MESA_SHADER_GEOMETRY] == NULL)) {
 	 shProg = NULL;
       }
       break;
    case GL_FRAGMENT_SHADER:
-      target = &ctx->Shader.CurrentFragmentProgram;
+      target = &ctx->_Shader->CurrentFragmentProgram;
       if ((shProg == NULL)
 	  || (shProg->_LinkedShaders[MESA_SHADER_FRAGMENT] == NULL)) {
 	 shProg = NULL;
@@ -929,9 +929,9 @@ use_shader_program(struct gl_context *ctx, GLenum type,
 	 /* Empty for now. */
 	 break;
       case GL_FRAGMENT_SHADER:
-	 if (*target == ctx->Shader._CurrentFragmentProgram) {
+	 if (*target == ctx->_Shader->_CurrentFragmentProgram) {
 	    _mesa_reference_shader_program(ctx,
-					   &ctx->Shader._CurrentFragmentProgram,
+					   &ctx->_Shader->_CurrentFragmentProgram,
 					   NULL);
 	 }
 	 break;
@@ -1450,7 +1450,7 @@ _mesa_UseProgram(GLhandleARB program)
       }
 
       /* debug code */
-      if (ctx->Shader.Flags & GLSL_USE_PROG) {
+      if (ctx->_Shader->Flags & GLSL_USE_PROG) {
          print_shader_info(shProg);
       }
    }

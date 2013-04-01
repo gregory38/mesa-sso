@@ -131,9 +131,9 @@ static void
 check_uniforms(struct gl_context *ctx)
 {
    struct gl_shader_program *shProg[3] = {
-      ctx->Shader.CurrentVertexProgram,
-      ctx->Shader.CurrentGeometryProgram,
-      ctx->Shader.CurrentFragmentProgram,
+      ctx->_Shader->CurrentVertexProgram,
+      ctx->_Shader->CurrentGeometryProgram,
+      ctx->_Shader->CurrentFragmentProgram,
    };
    unsigned j;
 

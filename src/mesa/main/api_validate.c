@@ -129,7 +129,7 @@ check_valid_to_render(struct gl_context *ctx, const char *function)
    case API_OPENGL_CORE:
       {
          const struct gl_shader_program *vsProg =
-            ctx->Shader.CurrentVertexProgram;
+            ctx->_Shader->CurrentVertexProgram;
          GLboolean haveVertexShader = (vsProg && vsProg->LinkStatus);
          GLboolean haveVertexProgram = ctx->VertexProgram._Enabled;
          if (haveVertexShader || haveVertexProgram) {

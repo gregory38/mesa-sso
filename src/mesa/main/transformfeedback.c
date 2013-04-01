@@ -341,13 +341,13 @@ _mesa_BeginTransformFeedback(GLenum mode)
 
    obj = ctx->TransformFeedback.CurrentObject;
 
-   if (ctx->Shader.CurrentVertexProgram == NULL) {
+   if (ctx->_Shader->CurrentVertexProgram == NULL) {
       _mesa_error(ctx, GL_INVALID_OPERATION,
                   "glBeginTransformFeedback(no program active)");
       return;
    }
 
-   info = &ctx->Shader.CurrentVertexProgram->LinkedTransformFeedback;
+   info = &ctx->_Shader->CurrentVertexProgram->LinkedTransformFeedback;
 
    if (info->NumOutputs == 0) {
       _mesa_error(ctx, GL_INVALID_OPERATION,

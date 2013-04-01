@@ -531,14 +531,14 @@ update_texture_state( struct gl_context *ctx )
    struct gl_program *vprog = NULL;
    GLbitfield enabledFragUnits = 0x0;
 
-   if (ctx->Shader.CurrentVertexProgram &&
-       ctx->Shader.CurrentVertexProgram->LinkStatus) {
-      vprog = ctx->Shader.CurrentVertexProgram->_LinkedShaders[MESA_SHADER_VERTEX]->Program;
+   if (ctx->_Shader->CurrentVertexProgram &&
+       ctx->_Shader->CurrentVertexProgram->LinkStatus) {
+      vprog = ctx->_Shader->CurrentVertexProgram->_LinkedShaders[MESA_SHADER_VERTEX]->Program;
    }
 
-   if (ctx->Shader.CurrentFragmentProgram &&
-       ctx->Shader.CurrentFragmentProgram->LinkStatus) {
-      fprog = ctx->Shader.CurrentFragmentProgram->_LinkedShaders[MESA_SHADER_FRAGMENT]->Program;
+   if (ctx->_Shader->CurrentFragmentProgram &&
+       ctx->_Shader->CurrentFragmentProgram->LinkStatus) {
+      fprog = ctx->_Shader->CurrentFragmentProgram->_LinkedShaders[MESA_SHADER_FRAGMENT]->Program;
    }
    else if (ctx->FragmentProgram._Enabled) {
       fprog = &ctx->FragmentProgram.Current->Base;

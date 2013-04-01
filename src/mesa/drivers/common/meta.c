@@ -617,13 +617,13 @@ _mesa_meta_begin(struct gl_context *ctx, GLbitfield state)
 
       if (ctx->Extensions.ARB_shader_objects) {
 	 _mesa_reference_shader_program(ctx, &save->VertexShader,
-					ctx->Shader.CurrentVertexProgram);
+					ctx->_Shader->CurrentVertexProgram);
 	 _mesa_reference_shader_program(ctx, &save->GeometryShader,
-					ctx->Shader.CurrentGeometryProgram);
+					ctx->_Shader->CurrentGeometryProgram);
 	 _mesa_reference_shader_program(ctx, &save->FragmentShader,
-					ctx->Shader.CurrentFragmentProgram);
+					ctx->_Shader->CurrentFragmentProgram);
 	 _mesa_reference_shader_program(ctx, &save->ActiveShader,
-					ctx->Shader.ActiveProgram);
+					ctx->_Shader->ActiveProgram);
 
          _mesa_UseProgram(0);
       }
@@ -965,7 +965,7 @@ _mesa_meta_end(struct gl_context *ctx)
 	 _mesa_use_shader_program(ctx, GL_FRAGMENT_SHADER,
 				  save->FragmentShader);
 
-      _mesa_reference_shader_program(ctx, &ctx->Shader.ActiveProgram,
+      _mesa_reference_shader_program(ctx, &ctx->_Shader->ActiveProgram,
 				     save->ActiveShader);
 
       _mesa_reference_shader_program(ctx, &save->VertexShader, NULL);

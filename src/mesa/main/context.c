@@ -1781,10 +1781,10 @@ _mesa_valid_to_render(struct gl_context *ctx, const char *where)
    if (ctx->NewState)
       _mesa_update_state(ctx);
 
-   if (ctx->Shader.CurrentVertexProgram) {
+   if (ctx->_Shader->CurrentVertexProgram) {
       vert_from_glsl_shader = true;
 
-      if (!ctx->Shader.CurrentVertexProgram->LinkStatus) {
+      if (!ctx->_Shader->CurrentVertexProgram->LinkStatus) {
          _mesa_error(ctx, GL_INVALID_OPERATION,
                      "%s(shader not linked)", where);
          return GL_FALSE;
@@ -1793,19 +1793,19 @@ _mesa_valid_to_render(struct gl_context *ctx, const char *where)
       {
          char errMsg[100];
          if (!_mesa_validate_shader_program(ctx,
-					    ctx->Shader.CurrentVertexProgram,
+					    ctx->_Shader->CurrentVertexProgram,
                                             errMsg)) {
             _mesa_warning(ctx, "Shader program %u is invalid: %s",
-                          ctx->Shader.CurrentVertexProgram->Name, errMsg);
+                          ctx->_Shader->CurrentVertexProgram->Name, errMsg);
          }
       }
 #endif
    }
 
-   if (ctx->Shader.CurrentGeometryProgram) {
+   if (ctx->_Shader->CurrentGeometryProgram) {
       geom_from_glsl_shader = true;
 
-      if (!ctx->Shader.CurrentGeometryProgram->LinkStatus) {
+      if (!ctx->_Shader->CurrentGeometryProgram->LinkStatus) {
          _mesa_error(ctx, GL_INVALID_OPERATION,
                      "%s(shader not linked)", where);
          return GL_FALSE;
@@ -1814,19 +1814,19 @@ _mesa_valid_to_render(struct gl_context *ctx, const char *where)
       {
          char errMsg[100];
          if (!_mesa_validate_shader_program(ctx,
-					    ctx->Shader.CurrentGeometryProgram,
+					    ctx->_Shader->CurrentGeometryProgram,
                                             errMsg)) {
             _mesa_warning(ctx, "Shader program %u is invalid: %s",
-                          ctx->Shader.CurrentGeometryProgram->Name, errMsg);
+                          ctx->_Shader->CurrentGeometryProgram->Name, errMsg);
          }
       }
 #endif
    }
 
-   if (ctx->Shader.CurrentFragmentProgram) {
+   if (ctx->_Shader->CurrentFragmentProgram) {
       frag_from_glsl_shader = true;
 
-      if (!ctx->Shader.CurrentFragmentProgram->LinkStatus) {
+      if (!ctx->_Shader->CurrentFragmentProgram->LinkStatus) {
          _mesa_error(ctx, GL_INVALID_OPERATION,
                      "%s(shader not linked)", where);
          return GL_FALSE;
@@ -1835,10 +1835,10 @@ _mesa_valid_to_render(struct gl_context *ctx, const char *where)
       {
          char errMsg[100];
          if (!_mesa_validate_shader_program(ctx,
-					    ctx->Shader.CurrentFragmentProgram,
+					    ctx->_Shader->CurrentFragmentProgram,
                                             errMsg)) {
             _mesa_warning(ctx, "Shader program %u is invalid: %s",
-                          ctx->Shader.CurrentFragmentProgram->Name, errMsg);
+                          ctx->_Shader->CurrentFragmentProgram->Name, errMsg);
          }
       }
 #endif
@@ -1887,13 +1887,13 @@ _mesa_valid_to_render(struct gl_context *ctx, const char *where)
    }
 
 #ifdef DEBUG
-   if (ctx->Shader.Flags & GLSL_LOG) {
+   if (ctx->_Shader->Flags & GLSL_LOG) {
       struct gl_shader_program *shProg[MESA_SHADER_TYPES];
       gl_shader_type i;
 
-      shProg[MESA_SHADER_VERTEX] = ctx->Shader.CurrentVertexProgram;
-      shProg[MESA_SHADER_GEOMETRY] = ctx->Shader.CurrentGeometryProgram;
-      shProg[MESA_SHADER_FRAGMENT] = ctx->Shader.CurrentFragmentProgram;
+      shProg[MESA_SHADER_VERTEX] = ctx->_Shader->CurrentVertexProgram;
+      shProg[MESA_SHADER_GEOMETRY] = ctx->_Shader->CurrentGeometryProgram;
+      shProg[MESA_SHADER_FRAGMENT] = ctx->_Shader->CurrentFragmentProgram;
 
       for (i = 0; i < MESA_SHADER_TYPES; i++) {
 	 if (shProg[i] == NULL || shProg[i]->_Used

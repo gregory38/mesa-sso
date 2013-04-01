@@ -2922,7 +2922,7 @@ get_mesa_program(struct gl_context *ctx,
 
    set_branchtargets(&v, mesa_instructions, num_instructions);
 
-   if (ctx->Shader.Flags & GLSL_DUMP) {
+   if (ctx->_Shader->Flags & GLSL_DUMP) {
       printf("\n");
       printf("GLSL IR for linked %s program %d:\n", target_string,
 	     shader_program->Name);
@@ -2957,7 +2957,7 @@ get_mesa_program(struct gl_context *ctx,
 
    _mesa_reference_program(ctx, &shader->Program, prog);
 
-   if ((ctx->Shader.Flags & GLSL_NO_OPT) == 0) {
+   if ((ctx->_Shader->Flags & GLSL_NO_OPT) == 0) {
       _mesa_optimize_program(ctx, prog);
    }
 
@@ -3099,7 +3099,7 @@ _mesa_glsl_compile_shader(struct gl_context *ctx, struct gl_shader *shader)
    state->error = glcpp_preprocess(state, &source, &state->info_log,
 			     &ctx->Extensions, ctx);
 
-   if (ctx->Shader.Flags & GLSL_DUMP) {
+   if (ctx->_Shader->Flags & GLSL_DUMP) {
       printf("GLSL source for %s shader %d:\n",
 	     _mesa_glsl_shader_target_name(state->target), shader->Name);
       printf("%s\n", shader->Source);
@@ -3137,11 +3137,11 @@ _mesa_glsl_compile_shader(struct gl_context *ctx, struct gl_shader *shader)
 	  sizeof(shader->builtins_to_link[0]) * state->num_builtins_to_link);
    shader->num_builtins_to_link = state->num_builtins_to_link;
 
-   if (ctx->Shader.Flags & GLSL_LOG) {
+   if (ctx->_Shader->Flags & GLSL_LOG) {
       _mesa_write_shader_to_file(shader);
    }
 
-   if (ctx->Shader.Flags & GLSL_DUMP) {
+   if (ctx->_Shader->Flags & GLSL_DUMP) {
       if (shader->CompileStatus) {
 	 printf("GLSL IR for shader %d:\n", shader->Name);
 	 _mesa_print_ir(shader->ir, NULL);
@@ -3197,7 +3197,7 @@ _mesa_glsl_link_shader(struct gl_context *ctx, struct gl_shader_program *prog)
       }
    }
 
-   if (ctx->Shader.Flags & GLSL_DUMP) {
+   if (ctx->_Shader->Flags & GLSL_DUMP) {
       if (!prog->LinkStatus) {
 	 printf("GLSL shader program %d failed to link\n", prog->Name);
       }

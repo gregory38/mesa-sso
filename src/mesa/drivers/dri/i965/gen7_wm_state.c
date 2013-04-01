@@ -169,7 +169,7 @@ upload_ps_state(struct brw_context *brw)
     * rendering, CurrentFragmentProgram is used for this check to
     * differentiate between the GLSL and non-GLSL cases.
     */
-   if (intel->ctx.Shader.CurrentFragmentProgram == NULL)
+   if (intel->ctx._Shader->CurrentFragmentProgram == NULL)
       dw2 |= GEN7_PS_FLOATING_POINT_MODE_ALT;
 
    if (intel->is_haswell)
