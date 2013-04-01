@@ -2255,6 +2255,11 @@ struct gl_shader_program
     * glClear()).
     */
    GLboolean InternalSeparateShader;
+   /* ARB_separate_shader_objects
+    * indicates whether program can be bound for individual pipeline stages using
+    * UseProgramStages after it is next linked.
+    */
+   GLboolean SeparateShader;
 
    GLuint NumShaders;          /**< number of attached shaders */
    struct gl_shader **Shaders; /**< List of attached the shaders */

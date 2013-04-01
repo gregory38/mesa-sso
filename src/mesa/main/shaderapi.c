@@ -622,6 +622,11 @@ get_programiv(struct gl_context *ctx, GLuint program, GLenum pname, GLint *param
    case GL_PROGRAM_BINARY_LENGTH:
       *params = 0;
       return;
+   case GL_PROGRAM_SEPARABLE:
+      if (!ctx->Extensions.ARB_separate_shader_objects)
+         break;
+      *params = shProg->SeparateShader;
+      return;
    default:
       break;
    }
@@ -1702,6 +1707,25 @@ _mesa_ProgramParameteri(GLuint program, GLenum pname, GLint value)
        */
       shProg->BinaryRetreivableHint = value;
       return;
+
+   case GL_PROGRAM_SEPARABLE:
+      if (!ctx->Extensions.ARB_separate_shader_objects)
+         break;
+
+      /* Spec imply that the behavior is the same as ARB_get_program_binary
+       * Chapter 7.3 Program Objects
+       */
+      if (value != GL_TRUE && value != GL_FALSE) {
+         _mesa_error(ctx, GL_INVALID_VALUE,
+                     "glProgramParameteri(pname=%s, value=%d): "
+                     "value must be 0 or 1.",
+                     _mesa_lookup_enum_by_nr(pname),
+                     value);
+         return;
+      }
+      shProg->SeparateShader = value;
+      return;
+
    default:
       break;
    }
@@ -1773,6 +1797,49 @@ _mesa_ActiveProgramEXT(GLuint program)
    return;
 }
 
+static GLuint
+_mesa_create_shader_program(struct gl_context* ctx, GLboolean separate,
+                            GLenum type, GLsizei count, const GLchar* const *strings)
+{
+   const GLuint shader = create_shader(ctx, type);
+   GLuint program = 0;
+
+   if (shader) {
+      _mesa_ShaderSource(shader, count, strings, NULL);
+
+      compile_shader(ctx, shader);
+
+      program = create_shader_program(ctx);
+      if (program) {
+         struct gl_shader_program *shProg;
+         struct gl_shader *sh;
+         GLint compiled = GL_FALSE;
+
+         shProg = _mesa_lookup_shader_program(ctx, program);
+         sh = _mesa_lookup_shader(ctx, shader);
+
+         shProg->SeparateShader = separate;
+
+         get_shaderiv(ctx, shader, GL_COMPILE_STATUS, &compiled);
+         if (compiled) {
+            attach_shader(ctx, program, shader);
+            link_program(ctx, program);
+            detach_shader(ctx, program, shader);
+#if 0
+            /* Possibly... */
+            if (active-user-defined-varyings-in-linked-program) {
+               append-error-to-info-log;
+               shProg->LinkStatus = GL_FALSE;
+            }
+#endif
+         }
+
+         ralloc_strcat(&shProg->InfoLog, sh->InfoLog);
+      }
+      delete_shader(ctx, shader);
+   }
+   return program;
+}
 
 /**
  * For GL_EXT_separate_shader_objects
@@ -1781,51 +1848,20 @@ GLuint GLAPIENTRY
 _mesa_CreateShaderProgramEXT(GLenum type, const GLchar *string)
 {
    GET_CURRENT_CONTEXT(ctx);
-   const GLuint shader = create_shader(ctx, type);
-   GLuint program = 0;
 
-   if (shader) {
-      shader_source(ctx, shader, _mesa_strdup(string));
-      compile_shader(ctx, shader);
-
-      program = create_shader_program(ctx);
-      if (program) {
-	 struct gl_shader_program *shProg;
-	 struct gl_shader *sh;
-	 GLint compiled = GL_FALSE;
-
-	 shProg = _mesa_lookup_shader_program(ctx, program);
-	 sh = _mesa_lookup_shader(ctx, shader);
-
-	 get_shaderiv(ctx, shader, GL_COMPILE_STATUS, &compiled);
-	 if (compiled) {
-	    attach_shader(ctx, program, shader);
-	    link_program(ctx, program);
-	    detach_shader(ctx, program, shader);
-
-#if 0
-	    /* Possibly... */
-	    if (active-user-defined-varyings-in-linked-program) {
-	       append-error-to-info-log;
-	       shProg->LinkStatus = GL_FALSE;
-	    }
-#endif
-	 }
-
-	 ralloc_strcat(&shProg->InfoLog, sh->InfoLog);
-      }
-
-      delete_shader(ctx, shader);
-   }
-
-   return program;
+   return _mesa_create_shader_program(ctx, GL_FALSE, type, 1, &string);
 }
 
 /**
  * ARB_separate_shader_objects: Compile & Link Program
+ * Basically the same as _mesa_CreateShaderProgramEXT but
+ * with support of multiple strings and SeparateShader flag.
  */
 GLuint GLAPIENTRY
-_mesa_CreateShaderProgramv(GLenum type, GLsizei count, const GLchar* const *strings)
+_mesa_CreateShaderProgramv(GLenum type, GLsizei count,
+                           const GLchar* const *strings)
 {
-   return 0;
+   GET_CURRENT_CONTEXT(ctx);
+
+   return _mesa_create_shader_program(ctx, GL_TRUE, type, count, strings);
 }
