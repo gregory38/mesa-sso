@@ -51,6 +51,7 @@
 #include "main/macros.h"
 #include "main/matrix.h"
 #include "main/mipmap.h"
+#include "main/pipelineobj.h"
 #include "main/pixel.h"
 #include "main/pbo.h"
 #include "main/polygon.h"
@@ -142,6 +143,8 @@ struct save_state
    struct gl_shader_program *GeometryShader;
    struct gl_shader_program *FragmentShader;
    struct gl_shader_program *ActiveShader;
+   struct gl_pipeline_object   *_Shader;
+   struct gl_pipeline_object   *Pipeline;
 
    /** MESA_META_STENCIL_TEST */
    struct gl_stencil_attrib Stencil;
@@ -615,6 +618,14 @@ _mesa_meta_begin(struct gl_context *ctx, GLbitfield state)
          _mesa_set_enable(ctx, GL_FRAGMENT_SHADER_ATI, GL_FALSE);
       }
 
+      if (ctx->Extensions.ARB_separate_shader_objects) {
+         /* Warning it must be done before _mesa_UseProgram call */
+         _mesa_reference_pipeline_object(ctx, &save->_Shader, ctx->_Shader);
+         _mesa_reference_pipeline_object(ctx, &save->Pipeline,
+                                         ctx->Pipeline.Current);
+         _mesa_BindProgramPipeline(0);
+      }
+
       if (ctx->Extensions.ARB_shader_objects) {
 	 _mesa_reference_shader_program(ctx, &save->VertexShader,
 					ctx->_Shader->CurrentVertexProgram);
@@ -954,16 +965,26 @@ _mesa_meta_end(struct gl_context *ctx)
                           save->ATIFragmentShaderEnabled);
       }
 
+      /* Warning it must be done before _mesa_use_shader_program call */
+      if (ctx->Extensions.ARB_separate_shader_objects) {
+         _mesa_reference_pipeline_object(ctx, &ctx->_Shader, save->_Shader);
+         _mesa_reference_pipeline_object(ctx, &ctx->Pipeline.Current,
+                                         save->Pipeline);
+         _mesa_reference_pipeline_object(ctx, &save->Pipeline, NULL);
+      }
+
       if (ctx->Extensions.ARB_vertex_shader)
-	 _mesa_use_shader_program(ctx, GL_VERTEX_SHADER, save->VertexShader);
+	 _mesa_use_shader_program(ctx, GL_VERTEX_SHADER, save->VertexShader,
+                                  ctx->_Shader);
 
       if (ctx->Extensions.ARB_geometry_shader4)
 	 _mesa_use_shader_program(ctx, GL_GEOMETRY_SHADER_ARB,
-				  save->GeometryShader);
+				  save->GeometryShader, ctx->_Shader);
 
       if (ctx->Extensions.ARB_fragment_shader)
 	 _mesa_use_shader_program(ctx, GL_FRAGMENT_SHADER,
-				  save->FragmentShader);
+				  save->FragmentShader, ctx->_Shader);
+
 
       _mesa_reference_shader_program(ctx, &ctx->_Shader->ActiveProgram,
 				     save->ActiveShader);
@@ -972,6 +993,7 @@ _mesa_meta_end(struct gl_context *ctx)
       _mesa_reference_shader_program(ctx, &save->GeometryShader, NULL);
       _mesa_reference_shader_program(ctx, &save->FragmentShader, NULL);
       _mesa_reference_shader_program(ctx, &save->ActiveShader, NULL);
+      _mesa_reference_pipeline_object(ctx, &save->_Shader, NULL);
    }
 
    if (state & MESA_META_STENCIL_TEST) {
