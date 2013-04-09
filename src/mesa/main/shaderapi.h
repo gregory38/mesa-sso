@@ -209,6 +209,9 @@ _mesa_ActiveProgramEXT(GLuint program);
 extern GLuint GLAPIENTRY
 _mesa_CreateShaderProgramEXT(GLenum type, const GLchar *string);
 
+/* GL_ARB_separate_shader_objects */
+extern GLuint GLAPIENTRY
+_mesa_CreateShaderProgramv(GLenum type, GLsizei count, const GLchar* const *strings);
 
 #ifdef __cplusplus
 }

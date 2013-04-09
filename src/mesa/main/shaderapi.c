@@ -1812,3 +1812,12 @@ _mesa_CreateShaderProgramEXT(GLenum type, const GLchar *string)
 
    return program;
 }
+
+/**
+ * ARB_separate_shader_objects: Compile & Link Program
+ */
+GLuint GLAPIENTRY
+_mesa_CreateShaderProgramv(GLenum type, GLsizei count, const GLchar* const *strings)
+{
+   return 0;
+}

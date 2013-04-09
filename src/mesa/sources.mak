@@ -64,6 +64,7 @@ MAIN_FILES = \
 	$(SRCDIR)main/multisample.c \
 	$(SRCDIR)main/pack.c \
 	$(SRCDIR)main/pbo.c \
+	$(SRCDIR)main/pipelineobj.c \
 	$(SRCDIR)main/pixel.c \
 	$(SRCDIR)main/pixelstore.c \
 	$(SRCDIR)main/pixeltransfer.c \

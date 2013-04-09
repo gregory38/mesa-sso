@@ -120,6 +120,7 @@ static const struct extension extension_table[] = {
    { "GL_ARB_robustness",                          o(dummy_true),                              GL,             2010 },
    { "GL_ARB_sampler_objects",                     o(dummy_true),                              GL,             2009 },
    { "GL_ARB_seamless_cube_map",                   o(ARB_seamless_cube_map),                   GL,             2009 },
+   { "GL_ARB_separate_shader_objects",             o(ARB_separate_shader_objects),             GLL,            2010 },
    { "GL_ARB_shader_bit_encoding",                 o(ARB_shader_bit_encoding),                 GL,             2010 },
    { "GL_ARB_shader_objects",                      o(ARB_shader_objects),                      GL,             2002 },
    { "GL_ARB_shader_stencil_export",               o(ARB_shader_stencil_export),               GL,             2009 },
