@@ -80,6 +80,7 @@ _mesa_new_pipeline_object(struct gl_context *ctx, GLuint name)
       _glthread_INIT_MUTEX(obj->Mutex);
       obj->RefCount = 1;
       obj->Flags = _mesa_get_shader_flags();
+      obj->InfoLog = ralloc_strdup(obj, "");
    }
 
    return obj;
@@ -332,13 +333,15 @@ _mesa_UseProgramStages(GLuint pipeline, GLbitfield stages, GLuint program)
     *    disabled (tessellation control and evaluation, geometry), or have
     *    undefined results (core profile vertex and fragment).
     */
-
    if (stages & GL_VERTEX_SHADER_BIT)
       _mesa_use_shader_program(ctx, GL_VERTEX_SHADER, shProg, pipe);
    if (stages & GL_FRAGMENT_SHADER_BIT)
       _mesa_use_shader_program(ctx, GL_FRAGMENT_SHADER, shProg, pipe);
    if (stages & GL_GEOMETRY_SHADER_BIT)
       _mesa_use_shader_program(ctx, GL_GEOMETRY_SHADER_ARB, shProg, pipe);
+
+   /* Validation would need to be redone */
+   pipe->Validated = GL_FALSE;
 }
 
 /**
@@ -566,11 +569,10 @@ _mesa_GetProgramPipelineiv(GLuint pipeline, GLenum pname, GLint *params)
       *params = pipe->ActiveProgram ? pipe->ActiveProgram->Name : 0;
       return;
    case GL_INFO_LOG_LENGTH:
-      // TODO
-      *params = 0;
+      *params = pipe->Validated;
       return;
    case GL_VALIDATE_STATUS:
-      *params = pipe->ValidationStatus;
+      *params = pipe->Validated;
       return;
    case GL_VERTEX_SHADER:
       *params = pipe->CurrentVertexProgram ? pipe->CurrentVertexProgram->Name : 0;
@@ -599,16 +601,227 @@ _mesa_GetProgramPipelineiv(GLuint pipeline, GLenum pname, GLint *params)
          _mesa_lookup_enum_by_nr(pname));
 }
 
+static GLboolean
+ProgramEnabledEverywhere(struct gl_pipeline_object *pipe,
+                         struct gl_shader_program *prog,
+                         char *errMsg, size_t errMsgLength)
+{
+   if (!prog) return GL_TRUE;
+
+   GLboolean status = GL_TRUE;
+
+   if (prog->_LinkedShaders[MESA_SHADER_VERTEX]) {
+      if (pipe->CurrentVertexProgram) {
+         if (prog->Name != pipe->CurrentVertexProgram->Name) {
+            status = GL_FALSE;
+         }
+      } else {
+         status = GL_FALSE;
+      }
+   }
+
+   if (prog->_LinkedShaders[MESA_SHADER_FRAGMENT]) {
+      if (pipe->CurrentFragmentProgram) {
+         if (prog->Name != pipe->CurrentFragmentProgram->Name) {
+            status = GL_FALSE;
+         }
+      } else {
+         status = GL_FALSE;
+      }
+   }
+
+   if (prog->_LinkedShaders[MESA_SHADER_GEOMETRY]) {
+      if (pipe->CurrentGeometryProgram) {
+         if (prog->Name != pipe->CurrentGeometryProgram->Name) {
+            status = GL_FALSE;
+         }
+      } else {
+         status = GL_FALSE;
+      }
+   }
+
+   if (!status) {
+      _mesa_snprintf(errMsg, errMsgLength,
+            "Program %d is not active for all shaders that was linked",
+            prog->Name);
+   }
+
+   return status;
+}
+
+extern GLboolean
+_mesa_validate_program_pipeline(struct gl_context* ctx,
+                                struct gl_pipeline_object *pipe,
+                                GLboolean IsBound)
+{
+   char errMsg[200] = "";
+   const GLuint errMsgLength = 200;
+
+   pipe->Validated = GL_FALSE;
+   pipe->InfoLog = ralloc_strdup(pipe, "");
+
+   /*
+    * A program object is active for at least one, but not all of the shader
+    * stages that were present when the program was linked.
+    */
+   if (!ProgramEnabledEverywhere(pipe, pipe->CurrentVertexProgram, errMsg, errMsgLength)) {
+      if (IsBound)
+         _mesa_error(ctx, GL_INVALID_OPERATION,
+               "glValidateProgramPipeline failed to validate the pipeline");
+      goto err;
+   }
+   if (!ProgramEnabledEverywhere(pipe, pipe->CurrentGeometryProgram, errMsg, errMsgLength)) {
+      if (IsBound)
+         _mesa_error(ctx, GL_INVALID_OPERATION,
+               "glValidateProgramPipeline failed to validate the pipeline");
+      goto err;
+   }
+   if (!ProgramEnabledEverywhere(pipe, pipe->CurrentFragmentProgram, errMsg, errMsgLength)) {
+      if (IsBound)
+         _mesa_error(ctx, GL_INVALID_OPERATION,
+               "glValidateProgramPipeline failed to validate the pipeline");
+      goto err;
+   }
+
+   /*
+    * One program object is active for at least two shader stages and a second
+    * program is active for a shader stage between two stages for which the
+    * first program was active. The active compute shader is ignored for the
+    * purposes of this test.
+    */
+   /* Without Tesselation, the only case is geometry shader between Fragment and Vertex */
+   if (pipe->CurrentGeometryProgram && pipe->CurrentFragmentProgram
+         && pipe->CurrentVertexProgram) {
+      if (pipe->CurrentVertexProgram->Name == pipe->CurrentGeometryProgram->Name &&
+          pipe->CurrentGeometryProgram->Name != pipe->CurrentVertexProgram->Name) {
+         _mesa_snprintf(errMsg, errMsgLength,
+               "Program %d is active for geometry stage between two"
+               "stages for which another program %d is active",
+               pipe->CurrentGeometryProgram->Name, pipe->CurrentVertexProgram->Name);
+         if (IsBound)
+            _mesa_error(ctx, GL_INVALID_OPERATION,
+                  "glValidateProgramPipeline failed to validate the pipeline");
+         goto err;
+      }
+   }
+
+   /*
+    * There is an active program for tessellation control, tessellation evaluation, or
+    * geometry stages with corresponding executable shader, but there is no active
+    * program with executable vertex shader.
+    */
+   if (!pipe->CurrentVertexProgram && pipe->CurrentGeometryProgram) {
+         _mesa_snprintf(errMsg, errMsgLength, "Program miss a vertex shader");
+      if (IsBound)
+         _mesa_error(ctx, GL_INVALID_OPERATION,
+               "glValidateProgramPipeline failed to validate the pipeline");
+      goto err;
+   }
+
+   /*
+    * There is no current program object specified by UseProgram, there is a cur-
+    * rent program pipeline object, and the current program for any shader stage
+    * has been relinked since being applied to the pipeline object via UsePro-
+    * gramStages with the PROGRAM_SEPARABLE parameter set to FALSE.
+    */
+   if (pipe->CurrentVertexProgram && !pipe->CurrentVertexProgram->SeparateShader) {
+      _mesa_snprintf(errMsg, errMsgLength,
+            "Program %d was relinked without PROGRAM_SEPARABLE state",
+            pipe->CurrentVertexProgram->Name);
+      if (IsBound)
+         _mesa_error(ctx, GL_INVALID_OPERATION,
+               "glValidateProgramPipeline failed to validate the pipeline");
+      goto err;
+   }
+   if (pipe->CurrentFragmentProgram && !pipe->CurrentFragmentProgram->SeparateShader) {
+      _mesa_snprintf(errMsg, errMsgLength,
+            "Program %d was relinked without PROGRAM_SEPARABLE state",
+            pipe->CurrentFragmentProgram->Name);
+      if (IsBound)
+         _mesa_error(ctx, GL_INVALID_OPERATION,
+               "glValidateProgramPipeline failed to validate the pipeline");
+      goto err;
+   }
+   if (pipe->CurrentGeometryProgram && !pipe->CurrentGeometryProgram->SeparateShader) {
+      _mesa_snprintf(errMsg, errMsgLength,
+            "Program %d was relinked without PROGRAM_SEPARABLE state",
+            pipe->CurrentGeometryProgram->Name);
+      if (IsBound)
+         _mesa_error(ctx, GL_INVALID_OPERATION,
+               "glValidateProgramPipeline failed to validate the pipeline");
+      goto err;
+   }
+
+   /*
+    * The sum of the number of active samplers for each active program exceeds
+    * the maximum number of texture image units allowed.
+    *
+    * Any two active samplers in the set of active program objects are of different
+    * types, but refer to the same texture image unit.
+    */
+   if (!_mesa_sampler_uniforms_pipeline_are_valid(pipe, errMsg, errMsgLength)) {
+      if (IsBound)
+         _mesa_error(ctx, GL_INVALID_OPERATION,
+               "glValidateProgramPipeline failed to validate the pipeline");
+      goto err;
+   }
+
+   /*
+    * The sum of the number of active shader storage blocks used by the current
+    * program objects exceeds the combined limit on the number of active shader
+    * storage blocks (the value of MAX_COMBINED_SHADER_STORAGE_BLOCKS).
+    */
+   /* NOT YET SUPPORTED */
+
+   pipe->Validated = GL_TRUE;
+
+err:
+   if (!pipe->Validated) {
+      /* update info log */
+      if (pipe->InfoLog) {
+         ralloc_free(pipe->InfoLog);
+      }
+      pipe->InfoLog = ralloc_strdup(pipe, errMsg);
+   }
+
+   return pipe->Validated;
+}
+
 /**
  * Check compatibility of pipeline's program
  */
 void GLAPIENTRY
 _mesa_ValidateProgramPipeline(GLuint pipeline)
 {
+   GET_CURRENT_CONTEXT(ctx);
+
+   struct gl_pipeline_object *pipe = lookup_pipeline_object(ctx, pipeline);
+
+   if (!pipe) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "glValidateProgramPipeline(pipeline)");
+      return;
+   }
+
+   _mesa_validate_program_pipeline(ctx, pipe, (ctx->_Shader->Name == pipe->Name));
 }
 
 void GLAPIENTRY
 _mesa_GetProgramPipelineInfoLog(GLuint pipeline, GLsizei bufSize,
       GLsizei *length, GLchar *infoLog)
 {
+   GET_CURRENT_CONTEXT(ctx);
+
+   struct gl_pipeline_object *pipe = lookup_pipeline_object(ctx, pipeline);
+
+   if (!pipe) {
+      _mesa_error(ctx, GL_INVALID_VALUE, "glGetProgramPipelineInfoLog(pipeline)");
+      return;
+   }
+
+   if (bufSize < 0) {
+      _mesa_error(ctx, GL_INVALID_VALUE, "glGetProgramPipelineInfoLog(bufSize)");
+      return;
+   }
+
+   _mesa_copy_string(infoLog, bufSize, length, pipe->InfoLog);
 }
