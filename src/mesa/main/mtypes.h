@@ -2434,6 +2434,9 @@ struct gl_pipeline_shader_state
    /** Currently bound pipeline object. See _mesa_BindProgramPipeline() */
    struct gl_pipeline_object *Current;
 
+   /* Default Object to ensure that _Shader is never NULL */
+   struct gl_pipeline_object *Default;
+
    /** Pipeline objects */
    struct _mesa_HashTable *Objects;
 };
@@ -3546,6 +3549,8 @@ struct gl_context
 
    struct gl_pipeline_shader_state Pipeline; /**< GLSL pipeline shader object state */
    struct gl_pipeline_object Shader; /**< GLSL shader object state */
+   struct gl_pipeline_object *_Shader; /**< Points to ::Shader or ::Pipeline.Current
+                                         or ::Pipeline.Default */
    struct gl_shader_compiler_options ShaderCompilerOptions[MESA_SHADER_TYPES];
 
    struct gl_query_state Query;  /**< occlusion, timer queries */
