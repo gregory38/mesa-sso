@@ -61,8 +61,8 @@
 /**
  * Return mask of GLSL_x flags by examining the MESA_GLSL env var.
  */
-static GLbitfield
-get_shader_flags(void)
+GLbitfield
+_mesa_get_shader_flags(void)
 {
    GLbitfield flags = 0x0;
    const char *env = _mesa_getenv("MESA_GLSL");
@@ -114,7 +114,11 @@ _mesa_init_shader_state(struct gl_context *ctx)
    for (sh = 0; sh < MESA_SHADER_TYPES; ++sh)
       memcpy(&ctx->ShaderCompilerOptions[sh], &options, sizeof(options));
 
-   ctx->Shader.Flags = get_shader_flags();
+   ctx->Shader.Flags = _mesa_get_shader_flags();
+
+   /* Extended for ARB_separate_shader_objects */
+   ctx->Shader.RefCount = 1;
+   _glthread_INIT_MUTEX(ctx->Shader.Mutex);
 }
 
 
@@ -132,6 +136,10 @@ _mesa_free_shader_state(struct gl_context *ctx)
    _mesa_reference_shader_program(ctx, &ctx->Shader._CurrentFragmentProgram,
 				  NULL);
    _mesa_reference_shader_program(ctx, &ctx->Shader.ActiveProgram, NULL);
+
+   /* Extended for ARB_separate_shader_objects */
+   assert(ctx->Shader.RefCount == 1);
+   _glthread_DESTROY_MUTEX(ctx->Shader.Mutex);
 }
 
 
