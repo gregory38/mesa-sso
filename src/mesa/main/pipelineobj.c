@@ -230,6 +230,115 @@ _mesa_reference_pipeline_object_(struct gl_context *ctx,
 void GLAPIENTRY
 _mesa_UseProgramStages(GLuint pipeline, GLbitfield stages, GLuint program)
 {
+   GET_CURRENT_CONTEXT(ctx);
+
+   struct gl_pipeline_object *pipe = lookup_pipeline_object(ctx, pipeline);
+   struct gl_shader_program *shProg = NULL;
+
+   if (!pipe) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "glUseProgramStages(pipeline)");
+      return;
+   }
+
+   /* Object is created by any Pipeline call but glGenProgramPipelines,
+    * glIsProgramPipeline and GetProgramPipelineInfoLog
+    */
+   pipe->EverBound = GL_TRUE;
+
+   /* NOT YET SUPPORTED:
+    * GL_TESS_CONTROL_SHADER_BIT
+    * GL_TESS_EVALUATION_SHADER_BIT
+    * GL_COMPUTE_SHADER_BIT
+    */
+   GLbitfield any_valid_stages = GL_VERTEX_SHADER_BIT | GL_FRAGMENT_SHADER_BIT;
+   if (_mesa_is_desktop_gl(ctx) && ctx->Extensions.ARB_geometry_shader4)
+      any_valid_stages |= GL_GEOMETRY_SHADER_BIT;
+
+   if (stages != GL_ALL_SHADER_BITS && (stages  & ~any_valid_stages) != 0) {
+      _mesa_error(ctx, GL_INVALID_VALUE, "glUseProgramStages(Stages)");
+      return;
+   }
+
+   /*
+    *  An INVALID_OPERATION error is generated :
+    *  by UseProgramStages if the program pipeline object it refers to is current
+    *  and the current transform feedback object is active and not paused;
+    */
+   /*
+    * 6a. Should the fragment shader program object be allowed to changed
+    * within transform feedback mode?
+    * RESOLVED:  No, this should generate an GL_INVALID_OPERATION error.
+    */
+   if (ctx->_Shader == pipe) {
+      if (_mesa_is_xfb_active_and_unpaused(ctx)) {
+         _mesa_error(ctx, GL_INVALID_OPERATION,
+               "glUseProgramStages(transform feedback active)");
+         return;
+      }
+   }
+
+   if (program) {
+      /* An INVALID_OPERATION error is generated if program is the name of a
+       * shader object
+       */
+      struct gl_shader *sh = _mesa_lookup_shader(ctx, program);
+      if (sh != NULL) {
+         _mesa_error(ctx, GL_INVALID_OPERATION,
+               "glUseProgramStages(progam is a shader object)");
+         return;
+      }
+
+      /* An INVALID_VALUE error is generated if program is not the name of ei-
+       * ther a program or shader object
+       */
+      shProg = _mesa_lookup_shader_program(ctx, program);
+      if (shProg == NULL) {
+         _mesa_error(ctx, GL_INVALID_VALUE,
+               "glUseProgramStages(progam is not a program object)");
+         return;
+      }
+
+      /* An INVALID_OPERATION error is generated if the program object named
+       * by program was linked without the PROGRAM_SEPARABLE parameter set, has
+       * not been linked, or was last linked unsuccessfully. The corresponding shader
+       * stages in pipeline are not modified.
+       */
+      if (!shProg->LinkStatus) {
+         _mesa_error(ctx, GL_INVALID_OPERATION,
+               "glUseProgramStages(program not linked)");
+         return;
+      }
+      if (!shProg->SeparateShader) {
+         _mesa_error(ctx, GL_INVALID_OPERATION,
+               "glUseProgramStages(program wasn't linked with the PROGRAM_SEPARABLE flag)");
+         return;
+      }
+   }
+
+   /*
+    *  7.  What happens if you have a program object current for a shader stage,
+    *    but the program object doesn't contain an executable for that stage?
+
+    *    RESOLVED:  This is not an error; instead it is as though there were no
+    *    program bound to that stage.  We have two different notions for
+    *    programs bound to shader stages.  A program is "current" for a stage
+    *    if it bound to that stage in the active program pipeline object.  A
+    *    program is "active" for a stage if it is current and it has an
+    *    executable for this stage.  In this case, the program would be current
+    *    but not active.
+
+    *    When no program is active for a stage, the stage will be replaced with
+    *    fixed functionality logic (compatibility profile vertex and fragment),
+    *    disabled (tessellation control and evaluation, geometry), or have
+    *    undefined results (core profile vertex and fragment).
+    */
+
+   if (stages & GL_VERTEX_SHADER_BIT)
+      _mesa_use_shader_program(ctx, GL_VERTEX_SHADER, shProg, pipe);
+   if (stages & GL_FRAGMENT_SHADER_BIT)
+      _mesa_use_shader_program(ctx, GL_FRAGMENT_SHADER, shProg, pipe);
+   if (stages & GL_GEOMETRY_SHADER_BIT)
+      _mesa_use_shader_program(ctx, GL_GEOMETRY_SHADER_ARB, shProg, pipe);
 }
 
 /**
